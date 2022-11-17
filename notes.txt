@@ -1,0 +1,20 @@
+
+
+
+# check your current python version
+python --version
+py --version
+python3 --version
+
+# install venv
+python3 -m pip install --user virtualenv
+
+# create a virtual environment
+python3 -m venv env
+
+# activate the virtual environment
+win:
+\env\Scripts\activate
+
+mac:
+source env/bin/activate
