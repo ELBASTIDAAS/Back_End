@@ -1,16 +1,19 @@
-from flask import Flask
+from flask import Flask, request, abort
 import json
 from config import me
 
 app = Flask("server")
 
+
 @app.get("/")
 def home():
     return "Hello world!"
 
+
 @app.get("/test")
 def test():
     return "This is another endpoint"
+
 
 @app.get("/about")
 def about():
@@ -32,12 +35,12 @@ def version():
     return json.dumps(version)
 
 #get /api/about
-#return me as jsno
+# return me as jsno
+
 
 @app.get("/api/about")
 def api_about():
     return json.dumps(me)
-
 
 
 app.run(debug=True)

@@ -14,7 +14,7 @@ python3 -m venv env
 
 # activate the virtual environment
 win:
-\env\Scripts\activate
+env\Scripts\activate
 
 mac:
 source env/bin/activate
