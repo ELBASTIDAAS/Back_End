@@ -47,6 +47,10 @@ def api_about():
 
 # return catalog
 
+# GET /api/catalog
+# returns the catalog as json
+# try it in the browser
+
 
 @app.get("/api/catalog")
 def get_catalog():
@@ -89,10 +93,7 @@ def save_catalog():
     if product["price"] < 0:
         return {"error": "price should be greater than 0"}, 400
 
-    # assign a unique _id to product
-    product["_id"] = random.randint(1000, 10000)
-
-    # add product to catalog
+    # save product on db
     db.Products.insert_one(product)
     product["_id"] = str(product["_id"])
 
@@ -102,8 +103,9 @@ def save_catalog():
 
 # return the number of products in the list
 @app.get("/api/test/count")
-def test_count():
-    return len(catalog)
+def num_of_products():
+    count = db.Products.count_documents({})
+    return json.dumps({"total": count})
 
 
 @app.get("/api/catalog/<category>")
@@ -111,11 +113,11 @@ def by_category(category):
     # filter the catalog by category
     # return the filtered list
     results = []
-    category = category.lower()
-    for product in catalog:
-        if product["category"].lower() == category:
-            results.append(product)
-    return category
+    cursor = db.Products.find({"category": category})
+    for prod in cursor:
+        prod["_id"] = str(prod["_id"])
+        results.append(prod)
+    return json.dumps(results)
 
 
 @app.get("/api/catalog/search/<text>")
@@ -124,9 +126,10 @@ def search(text):
     # return the filtered list
     results = []
     text = text.lower()
-    for product in catalog:
-        if text in product["title"].lower() or text in product["category"].lower():
-            results.append(product)
+    cursor = db.Products.find({"title": {"$regex": text, "$options": "i"}})
+    for prod in cursor:
+        prod["_id"] = str(prod["_id"])
+        results.append(prod)
     return json.dumps(results)
 
 #GET /api/categories
@@ -135,10 +138,9 @@ def search(text):
 @app.get("/api/categories")
 def get_categories():
     results = []
-    for product in catalog:
-        cat = product["category"]
-        if not cat in results:
-            results.append(cat)
+    cursor = db.Products.distinct("category")
+    for cat in cursor:
+        results.append(cat)
     return json.dumps(results)
 
 
@@ -147,8 +149,12 @@ def get_categories():
 @app.get("/api/test/value")
 def test_value():
     total = 0
-    for product in catalog:
-        total = total + product["price"]
+    # get all the products from the DB
+    # sum the price of each product
+    # return the total
+    cursor = db.Products.find({})
+    for prod in cursor:
+        total += prod["price"]
     return json.dump(total)
 
 # create an endpoint that return the cheapest product
@@ -156,8 +162,9 @@ def test_value():
 
 @app.get("/api/cheapest")
 def get_cheapest():
-    cheapest = catalog[0]
-    for product in catalog:
+    cursor = db.Products.find({})
+    cheapest = cursor[0]
+    for product in cursor:
         if product["price"] < cheapest["price"]:
             cheapest = product
     return json.dumps(cheapest)
@@ -166,14 +173,90 @@ def get_cheapest():
 # create anm endpoint that return a product based on give _id
 @app.get("/api/product/<id>")
 def get_product(id):
-    for product in catalog:
-        if product["_id"] == id:
-            return json.dumps(product)
-    return "Not found", 404
+    objId = ObjectId(id)
+    prod = db.Products.find_one({"_id": objId})
+    if not prod:
+        return abort(404, "Product not found")
+
+    prod["_id"] = str(prod["_id"])
+    return json.dumps(prod)
 
 
-app.run(debug=True)
+# app.run(debug=True)
 
 
-ages = [12, 34, 15, 73, 73, 13, 97, 23, 95,
-        23, 98, 53, 83, 45, 90, 23, 75, 23, 78]
+##############################################################################
+###################### COUPON CODES ##########################################
+##############################################################################
+
+# save: POST /api/coupons
+@app.post("/api/coupons")
+def save_coupon():
+    coupon = request.get_json()
+    # validation
+    if "code" not in coupon:
+        abort(400, "code is required")
+
+    # the code shopuld have at least 5 chars
+    # if len(coupon["code"]) < 4:
+        # return {"error": "code should be at least 4 chars"}, 400
+
+    # there must have a discount
+    if "discount" not in coupon:
+        abort(400, "Discount is required")
+
+    # # must have a price
+    # if "price" not in coupon:
+    #     return {"error": "price is required"}, 400
+
+    # # price must be a number
+    # if not isinstance(coupon["price"], (int, float)):
+    #     return {"error": "price must be a number"}, 400
+
+    # # the price should be greater than 0
+    # if coupon["price"] < 0:
+    #     return {"error": "price should be greater than 0"}, 400
+
+    # save product on db
+    db.Coupons.insert_one(coupon)
+    coupon["_id"] = str(coupon["_id"])
+
+    return json.dumps(coupon)
+
+# get: GET /api/coupons
+
+
+@app.get("/api/coupons")
+def get_coupons():
+    cursor = db.Coupons.find({})
+    results = []
+    for coupon in cursor:
+        coupon["_id"] = str(coupon["_id"])
+        results.append(coupon)
+
+    return json.dumps(results)
+
+# get by id: GET /api/coupons/<id>
+
+
+@app.get("/api/coupons/<id>")
+def get_coupon(id):
+    objId = ObjectId(id)
+    coupon = db.Coupons.find_one({"_id": objId})
+    if not coupon:
+        return abort(404, "Coupon not found")
+
+    coupon["_id"] = str(coupon["_id"])
+    return json.dumps(coupon)
+
+# get by code GET /api/coupons/validate/<code>
+
+
+@app.get("/api/coupons/validate/<code>")
+def validate_coupon(code):
+    coupon = db.Coupons.find_one({"code": code})
+    if not coupon:
+        return abort(404, "Invalid Code")
+
+    coupon["_id"] = str(coupon["_id"])
+    return json.dumps(coupon)

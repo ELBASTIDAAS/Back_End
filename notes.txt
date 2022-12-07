@@ -16,5 +16,8 @@ python3 -m venv env
 win:
 env\Scripts\activate
 
+# Start server
+flask --app server.py --debug run
+
 mac:
 source env/bin/activate
