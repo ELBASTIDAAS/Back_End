@@ -5,8 +5,10 @@ from config import me
 from mock_data import catalog
 from config import db
 from bson import ObjectId
+from flask_cors import CORS
 
 app = Flask("server")
+CORS(app)  # enable CORS, for development only
 
 
 @app.get("/")
